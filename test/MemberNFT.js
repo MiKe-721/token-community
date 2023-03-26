@@ -6,8 +6,7 @@ describe("MemberNFTコントラクト", function() {
     let memberNFT;
     const name = "MemberNFT";
     const symbol = "MEM";
-    const tokenURI1 = "hoge1";
-    const tokenURI2 = "hoge2";
+    const TokenURI1 = "hoge1";
     let owner;
     let addr1;
 
@@ -26,21 +25,15 @@ describe("MemberNFTコントラクト", function() {
         expect(await memberNFT.owner()).to.equal(owner.address);
     });
     it("ownerはNFT作成できるべき", async function() {
-        await memberNFT.nftMint(addr1.address, tokenURI1);
+        await memberNFT.nftMint(addr1.address);
         expect(await memberNFT.ownerOf(1)).to.equal(addr1.address);
     });
-    it("NFT作成のたびにtokenIdがインクリメントされるべき", async function() {
-        await memberNFT.nftMint(addr1.address, tokenURI1);
-        await memberNFT.nftMint(addr1.address, tokenURI2);
-        expect(await memberNFT.tokenURI(1)).to.equal(tokenURI1);
-        expect(await memberNFT.tokenURI(2)).to.equal(tokenURI2);
-    });
     it("owner以外はNFT作成に失敗すべき", async function () {
-        await expect(memberNFT.connect(addr1).nftMint(addr1.address, tokenURI1))
+        await expect(memberNFT.connect(addr1).nftMint(addr1.address))
         .to.be.revertedWith("Ownable: caller is not the owner");
     });
     it("nft作成後に'TokenURIChanged'イベントが発行されるべき", async function() {
-        await expect(memberNFT.nftMint(addr1.address, tokenURI1))
-        .to.emit(memberNFT, "TokenURIChanged").withArgs(addr1.address, 1, tokenURI1);
+        await expect(memberNFT.nftMint(addr1.address))
+        .to.emit(memberNFT, "TokenURIChanged").withArgs(addr1.address, 1);
     })
 })

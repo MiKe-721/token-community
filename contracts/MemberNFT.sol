@@ -35,7 +35,7 @@ contract MemberNFT is ERC721Enumerable, ERC721URIStorage, Ownable{
      * @dev
      * - 誰にどのtokenId,URIをmintしたかを記録する
      */
-    event TokenURIChanged(address indexed to, uint256 indexed tokenId, string uri);
+    event TokenURIChanged(address indexed to, uint256 indexed tokenId);
 
 
     /**
@@ -85,7 +85,7 @@ contract MemberNFT is ERC721Enumerable, ERC721URIStorage, Ownable{
         _setTokenURI(newTokenId, uri);
 
 
-        emit TokenURIChanged(to, newTokenId, uri);
+        emit TokenURIChanged(to, newTokenId);
     }
 
     function _getImage(string memory colorCode) internal pure returns (string memory){
