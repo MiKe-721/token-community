@@ -6,8 +6,8 @@ const main = async () => {
     const addr3 = "0x6b21536Ede699579BB19d47303982a16CC9c1e06";
 
     // deploy
-    MemberNFT = await ethers.getContractFactory("MemberNFT");
-    memberNFT = await MemberNFT.deploy();
+    const MemberNFT = await ethers.getContractFactory("MemberNFT");
+    const memberNFT = await MemberNFT.deploy();
     await memberNFT.deployed();
 
     console.log(`Contract deployed to: ${memberNFT.address}`);
