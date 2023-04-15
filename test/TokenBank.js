@@ -3,6 +3,8 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("TokenBankコントラクト", function() {
+    let MemberNFT;
+    let memberNFT;
     let TokenBank;
     let tokenBank;
     const name = "Token";
@@ -15,8 +17,15 @@ describe("TokenBankコントラクト", function() {
 
     beforeEach(async function() {
         [owner, addr1, addr2, addr3] = await ethers.getSigners();
+        MemberNFT = await ethers.getContractFactory("MemberNFT");
+        memberNFT = await MemberNFT.deploy();
+        await memberNFT.deployed();
+        await memberNFT.nftMint(owner.address);
+        await memberNFT.nftMint(addr1.address);
+        await memberNFT.nftMint(addr1.address);
+        await memberNFT.nftMint(addr2.address);
         TokenBank = await ethers.getContractFactory("Tokenbank");
-        tokenBank = await TokenBank.deploy(name, symbol);
+        tokenBank = await TokenBank.deploy(name, symbol, memberNFT.address);
         await tokenBank.deployed();
     });
     describe("デプロイ", function () {
@@ -113,6 +122,30 @@ describe("TokenBankコントラクト", function() {
         it("預入後には'TokenWithdraw'イベントが発行されるべき", async function () {
             await expect(tokenBank.connect(addr1).withdraw(100))
             .emit(tokenBank, "TokenWithdraw").withArgs(addr1.address, 100);
+        });
+        it("オーナーによる預入は失敗すべき", async function () {
+            await expect(tokenBank.deposit(1))
+            .to.be.revertedWith("Owner cannot execute");
+        });
+        it("オーナーによる引出は失敗すべき", async function () {
+            await expect(tokenBank.withdraw(1))
+            .to.be.revertedWith("Owner cannot execute");
+        });
+        it("トータル預け入れトークン数より大きな数はオーナーであっても移転に失敗すべき", async function () {
+            await expect(tokenBank.transfer(addr1.address, 201))
+            .to.be.revertedWith("Amounts greater than the total supply cannot be transfered");
+        });
+        it("NFTメンバー以外の移転は失敗すべき", async function () {
+            await expect(tokenBank.connect(addr3).transfer(addr1.address, 100))
+            .to.be.revertedWith("not NFT member");
+        });
+        it("NFTメンバー以外の預入は失敗すべき", async function () {
+            await expect(tokenBank.connect(addr3).deposit(100))
+            .to.be.revertedWith("not NFT member");
+        });
+        it("NFTメンバー以外の引出は失敗すべき", async function () {
+            await expect(tokenBank.connect(addr3).withdraw(1))
+            .to.be.revertedWith("not NFT member");
         });
     });
 });
