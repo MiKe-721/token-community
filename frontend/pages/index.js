@@ -2,7 +2,7 @@ import Head from 'next/head'
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import axios from 'axios'
-import { memberNFTAddress , tokenBankAddress } from '../../contracts'
+import { memberNFTAddress, tokenBankAddress } from '../../contracts'
 import MemberNFT from '../contracts/MemberNFT.json'
 import TokenBank from '../contracts/Tokenbank.json'
 
@@ -29,7 +29,7 @@ export default function Home() {
   const checkChainId = async () => {
     const { ethereum } = window;
     if (ethereum) {
-      const chain = await ethereum.request({method: 'eth_chainId'});
+      const chain = await ethereum.request({ method: 'eth_chainId' });
       console.log(`chain:${chain}`);
 
       if (chain != mumbaiId) {
@@ -41,68 +41,96 @@ export default function Home() {
       }
     }
   }
-const connectWallet = async () => {
-  try {
-    const { ethereum } = window;
-    const accounts = await ethereum.request({
-      method: 'eth_requestAccounts'
-    });
-    console.log(`account ${accounts[0]}`)
-    setAccount(accounts[0])
+  const connectWallet = async () => {
+    try {
+      const { ethereum } = window;
+      const accounts = await ethereum.request({
+        method: 'eth_requestAccounts'
+      });
+      console.log(`account ${accounts[0]}`)
+      setAccount(accounts[0])
 
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const signer = provider.getSigner();
+      const tokenBankContract = new ethers.Contract(tokenBankAddress, TokenBank.abi, signer);
+      const tBalance = await tokenBankContract.balanceOf(accounts[0]);
+      console.log(`tBalance:${tBalance}`);
+      setTokenBalance(tBalance.toNumber());
+
+      const bBalance = await tokenBankContract.bankBalanceOf(accounts[0]);
+      console.log(`tBalance:${bBalance}`);
+      setBankBalance(bBalance.toNumber());
+
+      const totalDeposit = await tokenBankContract.bankTotalDeposit();
+      console.log(`totalDeposit:${totalDeposit}`);
+      setBankBalance(totalDeposit.toNumber());
+
+      checkNFT(accounts[0]);
+
+      ethereum.on('accountsChanged', checkAccountChanged);
+      ethereum.on('chainChanged', checkChainId);
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  const checkAccountChanged = () => {
+    setAccount('');
+    setNftOwner(false);
+    setItems([]);
+    setTokenBalance('');
+    setBankBalance('');
+    setBankTotalDeposit('');
+    setInputData({ transferAddress: '', transferAmount: '', depositAmount: '', withdrawAmount: '' });
+  }
+
+  const checkNFT = async (addr) => {
+    const { ethereum } = window;
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
-    const tokenBankContract = new ethers.Contract(tokenBankAddress, TokenBank.abi, signer);
-    const tBalance = await tokenBankContract.balanceOf(accounts[0]);
-    console.log(`tBalance:${tBalance}`);
-    setTokenBalance(tBalance.toNumber());
 
-    const bBalance = await tokenBankContract.bankBalanceOf(accounts[0]);
-    console.log(`tBalance:${bBalance}`);
-    setBankBalance(bBalance.toNumber());
+    const nftContract = new ethers.Contract(
+      memberNFTAddress,
+      MemberNFT.abi,
+      signer
+    )
 
-    const totalDeposit = await tokenBankContract.bankTotalDeposit();
-    console.log(`totalDeposit:${totalDeposit}`);
-    setBankBalance(totalDeposit.toNumber());
+    const balance = await nftContract.balanceOf(addr);
+    console.log(`nftBalances: ${balance.toNumber()}`);
 
-    checkNFT(accounts[0]);
+    if (balance.toNumber() > 0) {
+      setNftOwner(true)
+    } else { '' }
 
-    ethereum.on('accountsChanged', checkAccountChanged);
-    ethereum.on('chainChanged', checkChainId);
-  } catch (err) {
-    console.log(err)
   }
-}
 
-const checkAccountChanged = () => {
-  setAccount('');
-  setNftOwner(false);
-  setItems([]);
-  setTokenBalance('');
-  setBankBalance('');
-  setBankTotalDeposit('');
-  setInputData({ transferAddress: '', transferAmount: '', depositAmount: '', withdrawAmount: '' });
-}
+  const tokenTransfer = async (event) => {
+    event.preventDefault();
+    if (tokenBalance >= inputData.transferAmount && zeroAddress != inputData.transferAddress) {
+      try{
+        const { ethereum } = window;
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const tokenBankContract = new ethers.Contract(tokenBankAddress, TokenBank.abi, signer);
+        const tx = await tokenBankContract.transfer(inputData.transferAddress, inputData.transferAmount);
+        await tx.wait();
 
-const checkNFT = async (addr) => {
-  const { ethereum } = window;
-  const provider = new ethers.providers.Web3Provider(ethereum);
-  const signer = provider.getSigner();
+        const tBalance = await tokenBankContract.balanceOf(account);
+        setTokenBalance(tBalance.toNumber());
+      } catch (err) {
+        console.log(err);
+      }
+    } else {
+      alert("所持残高を超えるトークンおよびゼロアドレス宛は指定できません")
+    }
+  }
 
-  const nftContract = new ethers.Contract(
-    memberNFTAddress,
-    MemberNFT.abi,
-    signer
-  )
-
-  const balance = await nftContract.balanceOf(addr);
-  console.log(`nftBalances: ${balance.toNumber()}`);
-
-  if (balance.toNumber() > 0) {
-    setNftOwner(true)
-  } else { '' }
-
-}
+  const handler = (e) => {
+    setInputData(prevData => ({
+      ...prevData,
+      [e.target.name]: e.target.value
+    }));
+  }
 
   useEffect(() => {
     checkMetaMaskInstalled();
@@ -134,8 +162,8 @@ const checkNFT = async (addr) => {
       <div className={'flex mt-1'}>
         {account === '' ? (
           <button className={'bg-transparent text-blue-700 font-semibold py-2 px-4 border border-blue-500 rounded hover:border-transparent hover:text-white hover:bg-blue-500 hover:cursor-pointer'}
-          onClick={connectWallet}>
-          MetaMaskを接続
+            onClick={connectWallet}>
+            MetaMaskを接続
           </button>
         ) : (
           chainId ? (
@@ -148,12 +176,37 @@ const checkNFT = async (addr) => {
                 <span className="flex flex-col items-left font-semibold">所持残高：{tokenBalance}</span>
                 < span className="flex flex-col items-left font-semibold">預入残高：{bankBalance}</span>
               </div>
+              {nftOwner ? (
+                <>
+                  <form className="flex pl-1 py-1 mb-1 bg-white border border-gray-400">
+                    <input
+                      type="text"
+                      className="w-5/12 ml-2 text-center border border-gray-400"
+                      name="transferAddress"
+                      placeholder="Wallet Address"
+                      onChange={handler}
+                      value={inputData.transferAddress}
+                    />
+                    <input
+                      type="text"
+                      className="w-5/12 ml-2 text-right border border-gray-400"
+                      name="transferAmount"
+                      placeholder={`100`}
+                      onChange={handler}
+                      value={inputData.transferAmount}
+                    />
+                    <button
+                      className="w-2/12 mx-2 bg-white border-blue-500 hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
+                      onClick={tokenTransfer}
+                    >移転</button>
+                  </form>
+                </>) : (<></>)}
             </div>
           ) : (
             <div className='flex flex-col justify-center items-center mb-20 font-bold text-2xl gap-y-3'>
               <div>mumbaiに接続してください</div>
             </div>
-            )
+          )
         )}
       </div>
     </div>
