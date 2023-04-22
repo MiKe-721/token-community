@@ -65,6 +65,8 @@ const connectWallet = async () => {
     console.log(`totalDeposit:${totalDeposit}`);
     setBankBalance(totalDeposit.toNumber());
 
+    checkNFT(accounts[0]);
+
     ethereum.on('accountsChanged', checkAccountChanged);
     ethereum.on('chainChanged', checkChainId);
   } catch (err) {
@@ -80,6 +82,26 @@ const checkAccountChanged = () => {
   setBankBalance('');
   setBankTotalDeposit('');
   setInputData({ transferAddress: '', transferAmount: '', depositAmount: '', withdrawAmount: '' });
+}
+
+const checkNFT = async (addr) => {
+  const { ethereum } = window;
+  const provider = new ethers.providers.Web3Provider(ethereum);
+  const signer = provider.getSigner();
+
+  const nftContract = new ethers.Contract(
+    memberNFTAddress,
+    MemberNFT.abi,
+    signer
+  )
+
+  const balance = await nftContract.balanceOf(addr);
+  console.log(`nftBalances: ${balance.toNumber()}`);
+
+  if (balance.toNumber() > 0) {
+    setNftOwner(true)
+  } else { '' }
+
 }
 
   useEffect(() => {
